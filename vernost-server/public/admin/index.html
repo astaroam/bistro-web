@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>eBISTRO Věrnost · Správa</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;600;700&display=swap">
+<style>
+:root { --bg: #161616; --panel: #1E1E1D; --line: #33332F; --yellow: #F7CE1B; --ink: #F3F1EA; --soft: #A9A69C; --green: #5BC236; --red: #E5534B; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Titillium Web", system-ui, sans-serif; }
+main { max-width: 900px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right)) 60px max(16px, env(safe-area-inset-left)); display: grid; gap: 28px; }
+h1 { font-weight: 300; font-size: 30px; margin: 0; }
+h2 { font-weight: 600; font-size: 18px; margin: 0 0 12px; }
+section { background: var(--panel); padding: 20px; }
+button { font: inherit; cursor: pointer; border: 0; background: var(--yellow); color: #141414; font-weight: 700; padding: 10px 16px; }
+button.ghost { background: transparent; color: var(--soft); border: 1.5px solid var(--line); font-weight: 600; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+input, textarea { font: inherit; background: #121212; color: var(--ink); border: 1.5px solid var(--line); padding: 10px; width: 100%; }
+label { display: grid; gap: 6px; font-weight: 600; font-size: 14px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.row > * { flex: 1; min-width: 140px; }
+.row > button { flex: none; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 560px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: #161616; padding: 14px; }
+.stat b { display: block; font-size: 28px; font-weight: 600; color: var(--yellow); font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--soft); }
+.pill { display: inline-block; font-size: 13px; font-weight: 600; padding: 3px 10px; margin-right: 6px; }
+.pill.ok { background: rgba(91,194,54,.18); color: var(--green); }
+.pill.off { background: rgba(229,83,75,.15); color: var(--red); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+td, th { text-align: left; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--soft); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.hint { color: var(--soft); font-size: 14px; margin: 8px 0 0; }
+.preview { background: rgba(60,60,60,.55); border-radius: 16px; padding: 10px 12px; max-width: 360px; font: 13px/1.35 -apple-system, system-ui, sans-serif; margin-top: 10px; }
+.preview b { display: block; }
+.confirm { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.msg { font-weight: 600; }
+.msg.err { color: var(--red); }
+.msg.ok { color: var(--green); }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>eBISTRO věrnostní karta · správa</h1>
+
+  <section id="login" hidden>
+    <h2>Přihlášení správce</h2>
+    <form class="row" id="login-form">
+      <label>Heslo<input type="password" id="password" autocomplete="current-password" required></label>
+      <button type="submit">Přihlásit</button>
+    </form>
+    <p class="msg err" id="login-msg"></p>
+  </section>
+
+  <div id="app" hidden style="display:grid;gap:28px">
+    <section>
+      <h2>Přehled</h2>
+      <p id="status"></p>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <section>
+      <h2>Hromadná zpráva všem hostům</h2>
+      <label for="bc-text">Text oznámení (max 200 znaků)</label>
+      <textarea id="bc-text" rows="3" maxlength="200" placeholder="Dnes vaříme Pho Bo a zelené kari. Otevřeno 11:00–14:00."></textarea>
+      <div class="preview" aria-label="Náhled oznámení"><b>eBISTRO</b><span id="bc-preview">Text se ukáže tady.</span></div>
+      <p class="hint">Zpráva se zobrazí v oznámeních a na zadní straně karty. Posílejte nejvýš 1 až 2 týdně, jinak hosté oznámení vypnou.</p>
+      <div class="confirm">
+        <button type="button" id="bc-send">Odeslat všem</button>
+        <span id="bc-confirm" hidden>Opravdu poslat <b id="bc-count"></b> hostům? <button type="button" id="bc-yes">Ano, odeslat</button> <button type="button" class="ghost" id="bc-no">Zrušit</button></span>
+        <span class="msg" id="bc-msg"></span>
+      </div>
+      <table style="margin-top:16px"><thead><tr><th>Kdy</th><th>Zpráva</th><th>Karet</th></tr></thead><tbody id="bc-list"></tbody></table>
+    </section>
+
+    <section>
+      <h2>Personál a PINy</h2>
+      <form class="row" id="staff-form">
+        <label>Jméno<input id="st-name" required maxlength="40"></label>
+        <label>PIN (4 až 8 číslic)<input id="st-pin" inputmode="numeric" pattern="\d{4,8}" required></label>
+        <button type="submit">Přidat</button>
+      </form>
+      <p class="msg" id="st-msg"></p>
+      <table><thead><tr><th>Jméno</th><th>Stav</th><th></th></tr></thead><tbody id="st-list"></tbody></table>
+    </section>
+
+    <section>
+      <h2>Nastavení</h2>
+      <form class="row" id="set-form">
+        <label>Uvítací misky při přidání karty (0 až 2)<input id="welcome" type="number" min="0" max="2" required></label>
+        <button type="submit">Uložit</button>
+      </form>
+      <p class="hint" id="goal-hint"></p>
+      <p class="msg" id="set-msg"></p>
+    </section>
+
+    <button type="button" class="ghost" id="logout" style="justify-self:start">Odhlásit</button>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let totalCards = 0;
+
+async function api(path, body) {
+  const res = await fetch('/api' + path, body === undefined ? { credentials: 'same-origin' } : {
+    method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { const e = new Error(data.error || 'Chyba spojení'); e.status = res.status; throw e; }
+  return data;
+}
+function cell(text) { const td = document.createElement('td'); td.textContent = text; return td; }
+function say(id, text, ok = true) { $(id).textContent = text; $(id).className = 'msg ' + (ok ? 'ok' : 'err'); }
+const when = (iso) => new Date(iso).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+async function loadAll() {
+  const s = await api('/admin/stats');
+  totalCards = s.cards;
+  $('status').innerHTML = '';
+  for (const [ok, label] of [[s.apple, 'Apple Wallet'], [s.google, 'Google Peněženka']]) {
+    const p = document.createElement('span'); p.className = 'pill ' + (ok ? 'ok' : 'off'); p.textContent = label + (ok ? ' zapnuto' : ' vypnuto'); $('status').append(p);
+  }
+  const tiles = [
+    [s.cards, 'vydaných karet'], [s.cardsApple, 'v Apple Wallet'], [s.cardsGoogle, 'v Google Peněžence'],
+    [s.stamps30d, 'misek za 30 dní'], [s.rewards30d, 'odměn za 30 dní'], [s.fullCards, 'plných karet čeká'],
+  ];
+  $('stats').replaceChildren(...tiles.map(([n, l]) => { const d = document.createElement('div'); d.className = 'stat'; d.innerHTML = '<b></b><span></span>'; d.firstChild.textContent = n; d.lastChild.textContent = l; return d; }));
+  $('welcome').value = s.welcomeStamps;
+  $('goal-hint').textContent = `Karta má ${s.goal} misek. Počet misek a text odměny se mění v nastavení serveru (STAMPS_GOAL, REWARD_TEXT).`;
+
+  const bcs = await api('/admin/broadcasts');
+  $('bc-list').replaceChildren(...bcs.map((b) => { const tr = document.createElement('tr'); tr.append(cell(when(b.created_at)), cell(b.text), cell(b.sent_count)); return tr; }));
+
+  const staff = await api('/admin/staff');
+  $('st-list').replaceChildren(...staff.map((p) => {
+    const tr = document.createElement('tr');
+    const act = document.createElement('td');
+    if (p.active) {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = 'Zablokovat';
+      b.onclick = async () => { await api(`/admin/staff/${p.id}/deactivate`, {}); loadAll(); };
+      act.append(b);
+    }
+    tr.append(cell(p.name), cell(p.active ? 'aktivní' : 'zablokovaný'), act);
+    return tr;
+  }));
+}
+
+async function boot() {
+  try { await loadAll(); $('login').hidden = true; $('app').hidden = false; }
+  catch (e) { if (e.status === 401) { $('app').hidden = true; $('login').hidden = false; } else alert(e.message); }
+}
+
+$('login-form').onsubmit = async (e) => {
+  e.preventDefault();
+  try { await api('/admin/login', { password: $('password').value }); $('password').value = ''; boot(); }
+  catch (err) { $('login-msg').textContent = err.message; }
+};
+$('logout').onclick = async () => { await api('/logout', {}); boot(); };
+$('bc-text').oninput = () => { $('bc-preview').textContent = $('bc-text').value || 'Text se ukáže tady.'; };
+$('bc-send').onclick = () => {
+  if ($('bc-text').value.trim().length < 3) return say('bc-msg', 'Napište zprávu.', false);
+  $('bc-count').textContent = totalCards; $('bc-confirm').hidden = false; $('bc-send').hidden = true;
+};
+$('bc-no').onclick = () => { $('bc-confirm').hidden = true; $('bc-send').hidden = false; };
+$('bc-yes').onclick = async () => {
+  try { const r = await api('/admin/broadcast', { text: $('bc-text').value }); say('bc-msg', `Odesláno na ${r.sent} karet.`); $('bc-text').value = ''; loadAll(); }
+  catch (e) { say('bc-msg', e.message, false); }
+  $('bc-confirm').hidden = true; $('bc-send').hidden = false;
+};
+$('staff-form').onsubmit = async (e) => {
+  e.preventDefault();
+  try { await api('/admin/staff', { name: $('st-name').value, pin: $('st-pin').value }); say('st-msg', 'Přidáno.'); e.target.reset(); loadAll(); }
+  catch (err) { say('st-msg', err.message, false); }
+};
+$('set-form').onsubmit = async (e) => {
+  e.preventDefault();
+  try { await api('/admin/settings', { welcomeStamps: Number($('welcome').value) }); say('set-msg', 'Uloženo.'); }
+  catch (err) { say('set-msg', err.message, false); }
+};
+boot();
+</script>
+</body>
+</html>

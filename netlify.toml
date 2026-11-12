@@ -9,3 +9,10 @@
   for = "/*.webm"
   [headers.values]
     Cache-Control = "public, max-age=604800"
+
+# Zdrojový kód věrnostního serveru se na web nepublikuje (běží zvlášť na karta.e-bistro.cz).
+[[redirects]]
+  from = "/vernost-server/*"
+  to = "/404.html"
+  status = 404
+  force = true
