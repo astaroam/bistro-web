@@ -1,0 +1,9 @@
+{
+  "name": "eBISTRO Kasa",
+  "short_name": "Kasa",
+  "start_url": "/kasa/",
+  "display": "standalone",
+  "background_color": "#101010",
+  "theme_color": "#101010",
+  "icons": [{ "src": "/assets/google/logo.png", "sizes": "660x660", "type": "image/png" }]
+}
